@@ -30,6 +30,8 @@ RUN pip install --no-cache-dir \
     "pyjwt>=2.8"
 
 COPY control-plane/app /app/app
+COPY control-plane/alembic /app/alembic
+COPY control-plane/alembic.ini /app/alembic.ini
 COPY pritunl-shim/shim /app/shim
 COPY --from=frontend /ui/dist /app/app/static
 
