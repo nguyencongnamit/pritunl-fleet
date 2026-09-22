@@ -40,6 +40,12 @@ class CreateOrgIn(BaseModel):
     name: str = Field(min_length=1, max_length=128)
 
 
+class EmailProfileIn(BaseModel):
+    org_id: str
+    to: str = Field(min_length=3, max_length=256)
+    fmt: Literal["ovpn", "tar", "key"] = "tar"
+
+
 class UserPolicyIn(BaseModel):
     org_id: str
     pin: str | None = None

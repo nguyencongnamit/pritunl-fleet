@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # Interval for the periodic drift-reconciliation sweep (seconds).
     sync_sweep_interval: float = 60.0
 
+    # --- Profile delivery (Resend) ---
+    # Optional: set to enable emailing client profiles. If unset, the email
+    # endpoint returns 501 (not configured) rather than failing silently.
+    resend_api_key: str | None = None
+    resend_from: str = '"Pritunl Fleet" <fleet@dev-test.org>'
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -21,6 +21,7 @@ from app.schemas.actions import (
     CreateOrgIn,
     CreateUserIn,
     DisableUserIn,
+    EmailProfileIn,
     IssueProfileIn,
     RevokeProfileIn,
     ServerActionIn,
@@ -28,6 +29,7 @@ from app.schemas.actions import (
 )
 from app.schemas.read import OrgRead, ServerRead, UserRead
 from app.services import audit as audit_service
+from app.services import delivery as delivery_service
 from app.services import nodes as node_service
 from app.services.nodes import NodeNotFoundError
 
@@ -142,6 +144,44 @@ async def issue_profile(
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/nodes/{node_id}/users/{user_id}/profile/email", status_code=202)
+async def email_profile(
+    node_id: str, user_id: str, payload: EmailProfileIn,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> dict:
+    node = _node(db, node_id)
+    adapter = node_service.build_adapter_for_node(node)
+    try:
+        content = await adapter.issue_profile(user_id=user_id, org_id=payload.org_id, fmt=payload.fmt)
+    except AdapterError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+    finally:
+        await adapter.close()
+
+    try:
+        msg_id = await delivery_service.send_profile_email(
+            to=payload.to, filename=f"{user_id}.{payload.fmt}", content=content, user_name=user_id,
+        )
+    except delivery_service.NotConfiguredError as exc:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        audit_service.append(
+            db, actor=actor, action="email_profile", result="failure",
+            node_id=node.id, node_name=node.name, target_type="user", target_id=user_id,
+            params={"to": payload.to, "fmt": payload.fmt}, detail=str(exc),
+        )
+        db.commit()
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"email failed: {exc}") from exc
+
+    audit_service.append(
+        db, actor=actor, action="email_profile", result="success",
+        node_id=node.id, node_name=node.name, target_type="user", target_id=user_id,
+        params={"to": payload.to, "fmt": payload.fmt},
+    )
+    db.commit()
+    return {"status": "sent", "message_id": msg_id}
 
 
 @router.post("/nodes/{node_id}/users/{user_id}/revoke", status_code=204)

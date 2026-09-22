@@ -67,6 +67,13 @@ export function Users() {
                         onClick={() => run(key, () => downloadProfile(u.node_id, u.id, u.org_id), true)}>
                         Profile
                       </Button>
+                      <Button size="sm" variant="ghost" disabled={b || u.revoked}
+                        onClick={() => {
+                          const to = prompt(`Email ${u.name}'s profile to:`, u.email ?? "");
+                          if (to) run(key, () => api.post(`/nodes/${u.node_id}/users/${u.id}/profile/email`, { org_id: u.org_id, to, fmt: "tar" }), true);
+                        }}>
+                        Email
+                      </Button>
                       <Button size="sm" variant="ghost" disabled={b}
                         onClick={() => run(key, () => api.post(`/nodes/${u.node_id}/users/${u.id}/disable`, { org_id: u.org_id, disabled: !u.disabled }))}>
                         {u.disabled ? "Enable" : "Disable"}

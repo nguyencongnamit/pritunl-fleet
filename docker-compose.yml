@@ -32,6 +32,8 @@ services:
       # on first login before any full session is granted.
       FLEET_BOOTSTRAP_ADMIN_USER: ${FLEET_BOOTSTRAP_ADMIN_USER:-admin}
       FLEET_BOOTSTRAP_ADMIN_PASSWORD: ${FLEET_BOOTSTRAP_ADMIN_PASSWORD:-changeme-admin-pw}
+      # Optional: enable emailing client profiles (Resend). Unset = email disabled.
+      FLEET_RESEND_API_KEY: ${FLEET_RESEND_API_KEY:-}
       # Mock nodes speak plain HTTP inside the lab network; real deployments
       # keep this true and terminate TLS on the shim.
       FLEET_VERIFY_NODE_TLS: "false"
