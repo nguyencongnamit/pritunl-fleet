@@ -25,6 +25,12 @@ from app.services.nodes import DuplicateNodeError, NodeNotFoundError
 router = APIRouter(prefix="/nodes", tags=["nodes"])
 
 
+def _to_out(node) -> NodeOut:
+    out = NodeOut.model_validate(node)
+    out.admin_url = node_service.get_admin_url(node)
+    return out
+
+
 @router.get("/adapters", response_model=list[str])
 def list_adapter_types() -> list[str]:
     return available_adapters()
@@ -32,7 +38,7 @@ def list_adapter_types() -> list[str]:
 
 @router.get("", response_model=list[NodeOut])
 def list_nodes(db: Session = Depends(get_db)) -> list[NodeOut]:
-    return [NodeOut.model_validate(n) for n in node_service.list_nodes(db)]
+    return [_to_out(n) for n in node_service.list_nodes(db)]
 
 
 @router.post("", response_model=NodeOut, status_code=status.HTTP_201_CREATED)
@@ -41,13 +47,13 @@ def create_node(payload: NodeCreate, db: Session = Depends(get_db)) -> NodeOut:
         node = node_service.create_node(db, payload)
     except DuplicateNodeError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, f"node name already exists: {exc}") from exc
-    return NodeOut.model_validate(node)
+    return _to_out(node)
 
 
 @router.get("/{node_id}", response_model=NodeOut)
 def get_node(node_id: str, db: Session = Depends(get_db)) -> NodeOut:
     try:
-        return NodeOut.model_validate(node_service.get_node(db, node_id))
+        return _to_out(node_service.get_node(db, node_id))
     except NodeNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "node not found") from exc
 
@@ -60,7 +66,7 @@ def update_node(node_id: str, payload: NodeUpdate, db: Session = Depends(get_db)
         raise HTTPException(status.HTTP_404_NOT_FOUND, "node not found") from exc
     except DuplicateNodeError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, f"node name already exists: {exc}") from exc
-    return NodeOut.model_validate(node)
+    return _to_out(node)
 
 
 @router.delete("/{node_id}", status_code=status.HTTP_204_NO_CONTENT)

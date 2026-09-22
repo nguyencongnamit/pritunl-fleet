@@ -49,6 +49,8 @@ class NodeOut(BaseModel):
     adapter_type: AdapterType
     verify_tls: bool
     enabled: bool
+    # Node's native admin URL (non-secret; stored in creds). None if not set.
+    admin_url: str | None = None
 
     status: HealthStatus
     last_checked_at: datetime | None

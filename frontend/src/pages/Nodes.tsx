@@ -52,18 +52,12 @@ export function Nodes() {
                       onClick={() => run(n.id, () => api.post(`/nodes/${n.id}/check`))}>
                       Check
                     </Button>
-                    <Button size="sm" variant="ghost" disabled={busy === n.id}
-                      onClick={async () => {
-                        setActionErr(null);
-                        try {
-                          const r = await api.get<{ url: string }>(`/nodes/${n.id}/admin-url`);
-                          window.open(r.url, "_blank", "noopener");
-                        } catch (e) {
-                          setActionErr(e instanceof ApiError ? e.message : String(e));
-                        }
-                      }}>
-                      Open admin
-                    </Button>
+                    {n.admin_url && (
+                      <Button size="sm" variant="ghost"
+                        onClick={() => window.open(n.admin_url!, "_blank", "noopener")}>
+                        Open admin
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" disabled={busy === n.id}
                       onClick={() => run(n.id, () => api.patch(`/nodes/${n.id}`, { enabled: !n.enabled }))}>
                       {n.enabled ? "Disable" : "Enable"}

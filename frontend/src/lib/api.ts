@@ -150,6 +150,7 @@ export interface Node {
   adapter_type: AdapterType;
   verify_tls: boolean;
   enabled: boolean;
+  admin_url: string | null;
   status: HealthStatus;
   last_checked_at: string | null;
   last_latency_ms: number | null;
