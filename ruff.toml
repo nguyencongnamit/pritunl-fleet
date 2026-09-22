@@ -1,0 +1,12 @@
+# Repo-wide Ruff config (applies to control-plane/ and pritunl-shim/).
+line-length = 110
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+    "B008",   # FastAPI idiom: Depends()/Query() in argument defaults
+    "UP042",  # str+Enum is intentional (JSON-serializable values); not StrEnum
+    "B905",   # zip() strict= not required here (equal-length by construction)
+    "E501",   # long lines tolerated (docstrings/signatures)
+]

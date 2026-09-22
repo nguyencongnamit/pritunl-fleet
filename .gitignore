@@ -1,0 +1,29 @@
+# Secrets — never commit
+.env
+*.pem
+*.key
+secrets/
+
+# Internal deployment/continuation notes (infra specifics — not for the public repo)
+STATUS.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / frontend (Phase 2)
+node_modules/
+frontend/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
