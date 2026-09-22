@@ -150,6 +150,17 @@ class NodeAdapter(abc.ABC):
         """action in {start, stop, restart}."""
         raise NotImplementedError
 
+    # --- Orgs + user policy (E4) --------------------------------------------
+    async def create_org(self, *, name: str) -> OrgInfo:
+        raise NotImplementedError
+
+    async def delete_org(self, *, org_id: str) -> None:
+        raise NotImplementedError
+
+    async def set_user_policy(self, *, user_id: str, org_id: str, policy: dict) -> UserInfo:
+        """Per-user policy: pin, otp_auth, client_to_client, reset_otp, disabled…"""
+        raise NotImplementedError
+
     # --- Phase 7: monitoring -------------------------------------------------
     async def list_sessions(self) -> list[SessionInfo]:
         raise NotImplementedError

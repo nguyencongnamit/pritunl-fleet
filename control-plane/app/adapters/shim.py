@@ -198,6 +198,17 @@ class ShimAdapter(NodeAdapter):
         resp = await self._mutate("POST", f"/v1/servers/{server_id}/state", {"action": action})
         return _parse_server(resp.json())
 
+    async def create_org(self, *, name: str) -> OrgInfo:
+        resp = await self._mutate("POST", "/v1/orgs", {"name": name})
+        return _parse_org(resp.json())
+
+    async def delete_org(self, *, org_id: str) -> None:
+        await self._mutate("DELETE", f"/v1/orgs/{org_id}")
+
+    async def set_user_policy(self, *, user_id: str, org_id: str, policy: dict) -> UserInfo:
+        resp = await self._mutate("PATCH", f"/v1/users/{user_id}", policy)
+        return _parse_user(resp.json())
+
     async def close(self) -> None:
         if self._client is not None:
             await self._client.aclose()

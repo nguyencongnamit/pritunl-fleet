@@ -71,6 +71,16 @@ export function Users() {
                         onClick={() => run(key, () => api.post(`/nodes/${u.node_id}/users/${u.id}/disable`, { org_id: u.org_id, disabled: !u.disabled }))}>
                         {u.disabled ? "Enable" : "Disable"}
                       </Button>
+                      <Button size="sm" variant="ghost" disabled={b}
+                        onClick={() => {
+                          const pin = prompt(`Set PIN for ${u.name} (blank = leave unchanged):`, "");
+                          const otp = confirm("Require OTP/2FA on this user's VPN connection?\nOK = enable, Cancel = disable");
+                          const policy: Record<string, unknown> = { org_id: u.org_id, otp_auth: otp };
+                          if (pin) policy.pin = pin;
+                          run(key, () => api.patch(`/nodes/${u.node_id}/users/${u.id}/policy`, policy));
+                        }}>
+                        Policy
+                      </Button>
                       <Button size="sm" variant="ghost" disabled={b || u.revoked}
                         onClick={() => { if (confirm(`Revoke all profiles for ${u.name}?`)) run(key, () => api.post(`/nodes/${u.node_id}/users/${u.id}/revoke`, { org_id: u.org_id })); }}>
                         Revoke

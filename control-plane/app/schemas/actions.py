@@ -36,6 +36,19 @@ class ServerActionIn(BaseModel):
     action: Literal["start", "stop", "restart"]
 
 
+class CreateOrgIn(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+
+
+class UserPolicyIn(BaseModel):
+    org_id: str
+    pin: str | None = None
+    otp_auth: bool | None = None
+    client_to_client: bool | None = None
+    disabled: bool | None = None
+    reset_otp: bool | None = None
+
+
 class AuditOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

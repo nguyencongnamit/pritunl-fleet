@@ -18,13 +18,15 @@ from app.models.node import Node
 from app.schemas.actions import (
     AuditOut,
     ChainStatusOut,
+    CreateOrgIn,
     CreateUserIn,
     DisableUserIn,
     IssueProfileIn,
     RevokeProfileIn,
     ServerActionIn,
+    UserPolicyIn,
 )
-from app.schemas.read import ServerRead, UserRead
+from app.schemas.read import OrgRead, ServerRead, UserRead
 from app.services import audit as audit_service
 from app.services import nodes as node_service
 from app.services.nodes import NodeNotFoundError
@@ -153,6 +155,49 @@ async def revoke_profile(
         lambda a: a.revoke_profile(user_id=user_id, org_id=payload.org_id),
     )
     return Response(status_code=204)
+
+
+# --- Orgs + user policy (E4) -------------------------------------------------
+
+
+@router.post("/nodes/{node_id}/orgs", response_model=OrgRead, status_code=201)
+async def create_org(
+    node_id: str, payload: CreateOrgIn,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> OrgRead:
+    node = _node(db, node_id)
+    org = await _perform(
+        db, node, actor, "create_org", "org", None, {"name": payload.name},
+        lambda a: a.create_org(name=payload.name),
+    )
+    return OrgRead(**asdict(org))
+
+
+@router.delete("/nodes/{node_id}/orgs/{org_id}", status_code=204)
+async def delete_org(
+    node_id: str, org_id: str,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> Response:
+    node = _node(db, node_id)
+    await _perform(
+        db, node, actor, "delete_org", "org", org_id, {},
+        lambda a: a.delete_org(org_id=org_id),
+    )
+    return Response(status_code=204)
+
+
+@router.patch("/nodes/{node_id}/users/{user_id}/policy", response_model=UserRead)
+async def set_user_policy(
+    node_id: str, user_id: str, payload: UserPolicyIn,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> UserRead:
+    node = _node(db, node_id)
+    policy = payload.model_dump(exclude_none=True, exclude={"org_id"})
+    user = await _perform(
+        db, node, actor, "set_user_policy", "user", user_id, policy,
+        lambda a: a.set_user_policy(user_id=user_id, org_id=payload.org_id, policy=policy),
+    )
+    return UserRead(**asdict(user))
 
 
 # --- Server lifecycle --------------------------------------------------------
