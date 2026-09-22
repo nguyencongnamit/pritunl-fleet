@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Cross-site profile bundle** — `GET /identities/{id}/profiles` returns a
+  health-ordered ZIP of a logical user's per-site client profiles (each site has
+  its own PKI, so a bundle the client fails over across, not a merged .ovpn).
+  Provisioning page gains a "Profiles" download.
+
 ## [1.2.0] - 2026-09-22
 
 ### Added
