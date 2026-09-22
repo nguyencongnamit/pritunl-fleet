@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-22
+
+Real Pritunl node management — the control plane now drives an actual Pritunl OSS
+node end-to-end, not just mock nodes.
+
+### Added
+
+- **Production shim** — a sidecar built `FROM` the node's Pritunl image that
+  reuses Pritunl's own Python modules over the shared HMAC contract (zero extra
+  deps; uses the image's Flask). Verified against Pritunl 1.32: orgs, users,
+  **real client-certificate/profile generation**, server create/delete/routes.
+- **Real-node lab** (`docker-compose.real.yml`) — MongoDB + Pritunl + shim, for
+  building/verifying against a genuine node.
+- **Orgs management** and **per-user policy** (PIN, OTP/2FA) through the console.
+- **Bulk user ops** — bulk create and bulk disable/enable/revoke/delete.
+- **Profile delivery** — email a client profile via Resend (config-gated).
+- **One-click "Open admin"** — deep-link into each node's native Pritunl admin.
+- **Login + MFA rate limiting** — per username+IP lockout against guessing.
+
+### Notes
+
+- Architecture boundary: the shim owns cross-site orchestration; host-coupled
+  network config (routes/attach on a running server) is delegated to the node's
+  native admin and returns a clear `409 host_coupled` from the shim.
+- Auto-login SSO is documented as an advanced same-origin-HTTPS opt-in (Pritunl
+  OSS has no native SSO); the shipped path is the deep-link.
+
+[1.1.0]: https://github.com/nguyencongnamit/pritunl-fleet/releases/tag/v1.1.0
+
 ## [1.0.0] - 2026-09-22
 
 Initial public release.

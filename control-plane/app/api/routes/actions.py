@@ -17,6 +17,8 @@ from app.api.deps import get_actor, get_db
 from app.models.node import Node
 from app.schemas.actions import (
     AuditOut,
+    BulkActionIn,
+    BulkCreateIn,
     ChainStatusOut,
     CreateOrgIn,
     CreateUserIn,
@@ -195,6 +197,78 @@ async def revoke_profile(
         lambda a: a.revoke_profile(user_id=user_id, org_id=payload.org_id),
     )
     return Response(status_code=204)
+
+
+# --- Bulk user ops (E4) ------------------------------------------------------
+
+
+@router.post("/nodes/{node_id}/users/bulk", status_code=201)
+async def bulk_create_users(
+    node_id: str, payload: BulkCreateIn,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> dict:
+    node = _node(db, node_id)
+    adapter = node_service.build_adapter_for_node(node)
+    results = []
+    try:
+        for row in payload.users:
+            try:
+                user = await adapter.create_user(org_id=payload.org_id, name=row.name, email=row.email)
+                audit_service.append(
+                    db, actor=actor, action="create_user", result="success",
+                    node_id=node.id, node_name=node.name, target_type="user", target_id=user.id,
+                    params={"org_id": payload.org_id, "name": row.name, "bulk": True},
+                )
+                results.append({"name": row.name, "status": "created", "id": user.id})
+            except AdapterError as exc:
+                audit_service.append(
+                    db, actor=actor, action="create_user", result="failure",
+                    node_id=node.id, node_name=node.name, target_type="user",
+                    params={"org_id": payload.org_id, "name": row.name, "bulk": True}, detail=str(exc),
+                )
+                results.append({"name": row.name, "status": "failed", "error": str(exc)})
+        db.commit()
+    finally:
+        await adapter.close()
+    return {"created": sum(1 for r in results if r["status"] == "created"), "results": results}
+
+
+@router.post("/nodes/{node_id}/users/bulk-action")
+async def bulk_user_action(
+    node_id: str, payload: BulkActionIn,
+    db: Session = Depends(get_db), actor: str = Depends(get_actor),
+) -> dict:
+    node = _node(db, node_id)
+    adapter = node_service.build_adapter_for_node(node)
+    results = []
+    try:
+        for uid in payload.user_ids:
+            try:
+                if payload.action == "delete":
+                    await adapter.delete_user(user_id=uid, org_id=payload.org_id)
+                elif payload.action == "revoke":
+                    await adapter.revoke_profile(user_id=uid, org_id=payload.org_id)
+                else:  # disable / enable
+                    await adapter.set_user_disabled(
+                        user_id=uid, org_id=payload.org_id, disabled=(payload.action == "disable")
+                    )
+                audit_service.append(
+                    db, actor=actor, action=f"bulk_{payload.action}", result="success",
+                    node_id=node.id, node_name=node.name, target_type="user", target_id=uid,
+                    params={"org_id": payload.org_id},
+                )
+                results.append({"id": uid, "status": "ok"})
+            except AdapterError as exc:
+                audit_service.append(
+                    db, actor=actor, action=f"bulk_{payload.action}", result="failure",
+                    node_id=node.id, node_name=node.name, target_type="user", target_id=uid,
+                    params={"org_id": payload.org_id}, detail=str(exc),
+                )
+                results.append({"id": uid, "status": "failed", "error": str(exc)})
+        db.commit()
+    finally:
+        await adapter.close()
+    return {"ok": sum(1 for r in results if r["status"] == "ok"), "results": results}
 
 
 # --- Orgs + user policy (E4) -------------------------------------------------

@@ -78,6 +78,24 @@ node shim/mock (verify). Signed string:
 `base64(HMAC-SHA256(secret, signed))`. Enforces timestamp skew + single-use
 nonces (replay protection). Mirrors Pritunl's native `Auth-*` headers.
 
+## Production shim (v1.1.0)
+
+The `shim` adapter talks to a **production shim** running beside each real
+Pritunl node: a sidecar built `FROM` the node's own Pritunl image (guaranteeing
+version parity), sharing its MongoDB. On boot it does `setup.setup_db()` +
+`setup.setup_settings()` and imports `pritunl.queues`/`pritunl.poolers` so it can
+call Pritunl's own `organization`/`user`/`server` classes — including **real
+certificate/profile generation** — without running the VPN itself. It exposes the
+same HMAC contract as the mock, plus orgs/policy/bulk/profile endpoints. See
+[`pritunl-shim/SHIM_DESIGN.md`](./pritunl-shim/SHIM_DESIGN.md).
+
+**Orchestration vs host-coupled boundary.** Cross-site user/org/profile/cert/
+policy operations run through the shim. Operations coupled to Pritunl's running
+host (server network locks, CA regen on org-attach) are **not** reimplemented in
+the sidecar — the shim returns `409 host_coupled` and the console routes the
+operator to the node's native admin via the one-click deep-link. This keeps Fleet
+decoupled from Pritunl's internal host/runner/lock machinery (version-robust).
+
 ## Data model (PostgreSQL)
 
 - `nodes` — registry: endpoint, region, adapter_type, verify_tls, enabled,

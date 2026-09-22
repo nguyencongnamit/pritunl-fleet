@@ -46,6 +46,22 @@ class EmailProfileIn(BaseModel):
     fmt: Literal["ovpn", "tar", "key"] = "tar"
 
 
+class BulkUserRow(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    email: str | None = None
+
+
+class BulkCreateIn(BaseModel):
+    org_id: str
+    users: list[BulkUserRow] = Field(min_length=1, max_length=1000)
+
+
+class BulkActionIn(BaseModel):
+    org_id: str
+    action: Literal["disable", "enable", "revoke", "delete"]
+    user_ids: list[str] = Field(min_length=1, max_length=1000)
+
+
 class UserPolicyIn(BaseModel):
     org_id: str
     pin: str | None = None

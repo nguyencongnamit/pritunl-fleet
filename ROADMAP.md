@@ -3,20 +3,26 @@
 The five build phases are done (see the build-order table in the README). This is
 what comes next, ordered by leverage. Checkboxes track intent, not commitment.
 
+## Done in v1.1.0
+
+- [x] **Production shim** — sidecar built `FROM` the node's Pritunl image,
+      reusing `pritunl.organization` / `user` / `server` over the HMAC contract.
+      Verified against Pritunl 1.32 (orgs, users, real certs, server lifecycle).
+- [x] **Orgs + per-user policy** (PIN/OTP), **bulk user ops**, **email profile
+      delivery** (Resend), **one-click "Open admin"** deep-link.
+- [x] **Login + MFA rate-limiting** (per username+IP lockout).
+
 ## Next up (highest leverage)
 
-- [ ] **Real shim blueprint** — the production `pritunl-shim` that patches an OSS
-      Pritunl node: a Flask blueprint reusing `pritunl.organization` /
-      `pritunl.user` / `pritunl.server`, guarded by the shared HMAC module.
-      Ship as a small overlay image so `mongo`/`ssh` stay stubs by choice.
 - [ ] **Alembic migrations** — replace `create_all()`; versioned schema for real
-      deployments and upgrades.
-- [ ] **Mongo read adapter** — implement the read-only fast path (motor, TLS,
-      short serverSelectionTimeout) to accelerate dashboard/sync on large fleets.
-- [ ] **SSH break-glass adapter** — asyncssh with strict host-key checking +
-      forced-command; used to install/upgrade the shim and restart services.
-- [ ] **Login rate-limiting + lockout** — per-principal + per-IP throttle on
-      `/auth/login` and `/auth/mfa/verify`.
+      deployments and upgrades. (Currently blocks adding DB columns.)
+- [ ] **Bulk UI + Orgs UI** — the bulk + orgs APIs exist; add the console screens.
+- [ ] **Failover profiles** — multi-`remote` merge across sites (needs 2+ nodes).
+- [ ] **Mongo read adapter** — read-only fast path (motor, TLS) for large fleets.
+- [ ] **SSH break-glass adapter** — asyncssh, strict host-key, forced-command;
+      installs/upgrades the shim and restarts services.
+- [ ] **SSO auto-login** (vs the shipped deep-link) — mint Pritunl's custom-signed
+      session cookie; requires same-origin HTTPS co-location (documented).
 
 ## Reliability & scale
 
