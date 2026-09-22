@@ -8,6 +8,8 @@ placement is marked failed with the error.
 
 from __future__ import annotations
 
+import io
+import zipfile
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -15,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.adapters.base import AdapterError
 from app.models.base import utcnow
-from app.models.node import Node
+from app.models.node import HealthStatus, Node
 from app.models.provisioning import LogicalUser, PlacementStatus, UserPlacement
 from app.services import audit as audit_service
 from app.services.nodes import build_adapter_for_node
@@ -134,3 +136,54 @@ async def deprovision(session: Session, *, actor: str, logical_user_id: str, har
 
 def list_identities(session: Session) -> list[LogicalUser]:
     return list(session.scalars(select(LogicalUser).order_by(LogicalUser.username)))
+
+
+# Health ordering: reachable sites first (client tries them in bundle order).
+_HEALTH_RANK = {
+    HealthStatus.reachable: 0,
+    HealthStatus.degraded: 1,
+    HealthStatus.unknown: 2,
+    HealthStatus.down: 3,
+}
+
+
+async def build_identity_bundle(session: Session, logical_user_id: str) -> tuple[str, bytes]:
+    """ZIP of the logical user's per-site client profiles, health-ordered.
+
+    Each Pritunl site has its own PKI, so a user has a distinct profile per site;
+    the bundle lets a client import all and fail over across sites. (A single
+    multi-remote .ovpn only works within one site's replica hosts.)
+    """
+    lu = session.get(LogicalUser, logical_user_id)
+    if lu is None:
+        raise LookupError(logical_user_id)
+
+    pairs = []
+    for p in lu.placements:
+        if not p.remote_user_id or p.status != PlacementStatus.active:
+            continue
+        node = session.get(Node, p.node_id)
+        if node is not None:
+            pairs.append((p, node))
+    pairs.sort(key=lambda pn: _HEALTH_RANK.get(pn[1].status, 9))
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr(
+            "README.txt",
+            f"VPN profiles for '{lu.username}', one per site (health-ordered).\n"
+            f"Import all into your OpenVPN/Pritunl client; it will fail over across them.\n",
+        )
+        for idx, (p, node) in enumerate(pairs):
+            adapter = build_adapter_for_node(node)
+            try:
+                data = await adapter.issue_profile(
+                    user_id=p.remote_user_id, org_id=p.org_id, fmt="tar"
+                )
+                z.writestr(f"{idx + 1:02d}-{node.region}-{node.name}-{lu.username}.tar", data)
+            except AdapterError:
+                continue
+            finally:
+                await adapter.close()
+
+    return f"{lu.username}-profiles.zip", buf.getvalue()

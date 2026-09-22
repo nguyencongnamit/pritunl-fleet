@@ -2,6 +2,7 @@ import React from "react";
 import {
   api,
   ApiError,
+  downloadIdentityBundle,
   type LogicalUser,
   type Node,
   type NodeSyncReport,
@@ -88,6 +89,10 @@ export function Provisioning() {
                 </Td>
                 <Td>
                   <div className="flex gap-1.5">
+                    <Button size="sm" variant="ghost"
+                      onClick={() => downloadIdentityBundle(lu.id, lu.username).catch((e) => setErr(String(e)))}>
+                      Profiles
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => deprovision(lu.id, false)}>Revoke all</Button>
                     <Button size="sm" variant="danger" onClick={() => deprovision(lu.id, true)}>Delete all</Button>
                   </div>

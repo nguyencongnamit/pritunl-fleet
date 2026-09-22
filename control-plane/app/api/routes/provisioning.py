@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_actor, get_db
@@ -13,6 +13,7 @@ from app.schemas.provisioning import (
     NodeSyncReportOut,
     ProvisionIn,
 )
+from app.services import audit as audit_service
 from app.services import provisioning as prov_service
 from app.services import sync as sync_service
 from app.services.nodes import NodeNotFoundError, get_node
@@ -35,6 +36,27 @@ async def provision(
 @router.get("/identities", response_model=list[LogicalUserOut])
 def list_identities(db: Session = Depends(get_db)) -> list[LogicalUserOut]:
     return [LogicalUserOut.model_validate(lu) for lu in prov_service.list_identities(db)]
+
+
+@router.get("/identities/{logical_user_id}/profiles")
+async def identity_profiles(
+    logical_user_id: str, db: Session = Depends(get_db), actor: str = Depends(get_actor)
+) -> Response:
+    """Health-ordered ZIP of the identity's per-site profiles (cross-site failover)."""
+    try:
+        filename, data = await prov_service.build_identity_bundle(db, logical_user_id)
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "identity not found") from exc
+    audit_service.append(
+        db, actor=actor, action="download_identity_bundle", result="success",
+        target_type="identity", target_id=logical_user_id,
+    )
+    db.commit()
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/identities/{logical_user_id}/deprovision", response_model=LogicalUserOut)

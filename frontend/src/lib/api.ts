@@ -241,6 +241,22 @@ export interface NodeSyncReport {
   error: string | null;
 }
 
+// Download the health-ordered per-site profile bundle for a logical identity.
+export async function downloadIdentityBundle(logicalUserId: string, username: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`/api/v1/identities/${logicalUserId}/profiles`, { headers });
+  if (!res.ok) throw new ApiError(res.status, `bundle download failed (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${username}-profiles.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Download a client profile (.ovpn) and trigger a browser save.
 export async function downloadProfile(
   nodeId: string,
