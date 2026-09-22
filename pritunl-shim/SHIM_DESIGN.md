@@ -119,8 +119,26 @@ be fragile and version-brittle, so we don't.
 - Net: **make `create_server` faithfully mirror Pritunl's own server-create
   handler**; attach/route then work.
 
-**Not yet built:** E4 user policy/OTP/bulk, E5 profile delivery + failover, E6
-SSO (Flask-signed `session` cookie: `{'session_id','admin_id'}` signed with
-`settings.app.cookie_secret`; requires the shim to be reachable on the node's
-web origin for the cookie to apply cross-request — a deployment/reverse-proxy
-detail).
+**E4 DONE** (orgs + per-user PIN/OTP via `patch_user`). **E5 DONE** (email
+delivery via Resend, control-plane side). **E6 — deep-link shipped; auto-login
+documented:**
+
+- **Shipped:** one-click **"Open admin"** — the node's native Pritunl web URL is
+  stored (non-secret) in the sealed creds as `admin_url`; `GET
+  /nodes/{id}/admin-url` returns it and the console opens it. This is the robust
+  OSS answer to "redirect into each server".
+- **Auto-login SSO (advanced, not shipped — intentionally):** Pritunl OSS has no
+  admin SSO. Minting a session is easy (`administrator.get_by_username(u).
+  new_session()` + set `admin.sessions`), but the cookie is **custom-signed**
+  (not stock Flask) via `cookie_secret` + `cookie_secret2` (`pritunl/utils/
+  sig.py`), the session dict is `{session_id, admin_id, timestamp[, source]}`
+  with a `source`/remote-addr check when `app.server_ssl` is false, and the
+  cookie is `Secure`+`HttpOnly`. A working auto-login therefore requires: (a)
+  replicating `sig.py` exactly, (b) serving the mint endpoint on the node's web
+  origin over HTTPS (cookies are host-, not port-scoped), (c) matching/omitting
+  `source`. This couples Fleet to Pritunl's internal session crypto (version-
+  brittle), so we ship the deep-link and leave auto-login as an opt-in for
+  same-origin-HTTPS deploys.
+
+**Still open:** E5 failover profiles (needs 2+ real nodes), E4 bulk CSV, E7
+hardening (Alembic, login rate-limit, audit row-lock).

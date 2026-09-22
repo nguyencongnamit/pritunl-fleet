@@ -93,6 +93,15 @@ def delete_node(session: Session, node_id: str) -> None:
     session.flush()
 
 
+def get_admin_url(node: Node) -> str | None:
+    """The node's native Pritunl web-admin URL, stored (non-secret) in the sealed
+    credentials blob as `admin_url`. Used for the one-click "Open admin" deep-link
+    (Pritunl OSS has no admin SSO; auto-login would require forging Pritunl's
+    custom-signed session cookie on the node's web origin — see SHIM_DESIGN.md)."""
+    creds = _unseal_credentials(node.credentials_enc)
+    return creds.get("admin_url")
+
+
 def build_adapter_for_node(node: Node) -> NodeAdapter:
     """Decrypt this node's credentials and return a ready adapter instance."""
     settings = get_settings()

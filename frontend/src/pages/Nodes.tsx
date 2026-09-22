@@ -53,6 +53,18 @@ export function Nodes() {
                       Check
                     </Button>
                     <Button size="sm" variant="ghost" disabled={busy === n.id}
+                      onClick={async () => {
+                        setActionErr(null);
+                        try {
+                          const r = await api.get<{ url: string }>(`/nodes/${n.id}/admin-url`);
+                          window.open(r.url, "_blank", "noopener");
+                        } catch (e) {
+                          setActionErr(e instanceof ApiError ? e.message : String(e));
+                        }
+                      }}>
+                      Open admin
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={busy === n.id}
                       onClick={() => run(n.id, () => api.patch(`/nodes/${n.id}`, { enabled: !n.enabled }))}>
                       {n.enabled ? "Disable" : "Enable"}
                     </Button>
@@ -81,6 +93,7 @@ function AddNodeForm({ onDone }: { onDone: () => void }) {
   const [verifyTls, setVerifyTls] = React.useState(false);
   const [token, setToken] = React.useState("");
   const [secret, setSecret] = React.useState("");
+  const [adminUrl, setAdminUrl] = React.useState("");
   const [credsJson, setCredsJson] = React.useState("{}");
   const [err, setErr] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -90,7 +103,10 @@ function AddNodeForm({ onDone }: { onDone: () => void }) {
     setErr(null);
     let credentials: Record<string, unknown>;
     try {
-      credentials = adapter === "shim" ? { token, secret } : JSON.parse(credsJson);
+      credentials =
+        adapter === "shim"
+          ? { token, secret, ...(adminUrl ? { admin_url: adminUrl } : {}) }
+          : JSON.parse(credsJson);
     } catch {
       setErr("credentials must be valid JSON");
       return;
@@ -124,6 +140,9 @@ function AddNodeForm({ onDone }: { onDone: () => void }) {
           <>
             <Field label="Auth token"><input className={input} value={token} onChange={(e) => setToken(e.target.value)} /></Field>
             <Field label="HMAC secret"><input className={input} type="password" value={secret} onChange={(e) => setSecret(e.target.value)} /></Field>
+            <Field label="Admin URL (optional, for 'Open admin')" wide>
+              <input className={input} placeholder="https://vpn-sg.example (node's Pritunl web UI)" value={adminUrl} onChange={(e) => setAdminUrl(e.target.value)} />
+            </Field>
           </>
         ) : (
           <Field label="Credentials (JSON)" wide>

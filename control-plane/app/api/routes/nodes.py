@@ -136,3 +136,16 @@ async def node_users(node_id: str, db: Session = Depends(get_db)) -> list[UserRe
 async def node_sessions(node_id: str, db: Session = Depends(get_db)) -> list[SessionRead]:
     node = _require_node(db, node_id)
     return await dashboard_service.node_sessions(node)
+
+
+@router.get("/{node_id}/admin-url")
+def node_admin_url(node_id: str, db: Session = Depends(get_db)) -> dict:
+    """One-click deep-link target: the node's native Pritunl admin URL."""
+    node = _require_node(db, node_id)
+    url = node_service.get_admin_url(node)
+    if not url:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "no admin_url set for this node (add it to the node's credentials)",
+        )
+    return {"url": url}
