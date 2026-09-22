@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     bootstrap_admin_user: str | None = None
     bootstrap_admin_password: str | None = None
 
+    # --- Login rate limiting (per username+IP) ---
+    rate_limit_max_attempts: int = 5
+    rate_limit_window_seconds: int = 300
+    rate_limit_lockout_seconds: int = 300
+
     # --- Node access hardening ---
     # Verify node TLS certificates by default. Only disable for local mock lab.
     verify_node_tls: bool = True
