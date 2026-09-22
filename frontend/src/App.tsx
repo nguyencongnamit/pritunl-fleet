@@ -5,6 +5,7 @@ import { Audit } from "./pages/Audit";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
 import { Nodes } from "./pages/Nodes";
+import { Orgs } from "./pages/Orgs";
 import { Principals } from "./pages/Principals";
 import { Provisioning } from "./pages/Provisioning";
 import { Servers } from "./pages/Servers";
@@ -16,6 +17,7 @@ const ROUTES: Route[] = [
   { path: "#/", label: "Dashboard", el: <Dashboard /> },
   { path: "#/nodes", label: "Nodes", el: <Nodes /> },
   { path: "#/servers", label: "Servers", el: <Servers /> },
+  { path: "#/orgs", label: "Orgs", el: <Orgs /> },
   { path: "#/users", label: "Users", el: <Users /> },
   { path: "#/provision", label: "Provisioning", el: <Provisioning /> },
   { path: "#/audit", label: "Audit", el: <Audit /> },
