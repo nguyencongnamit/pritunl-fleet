@@ -8,6 +8,10 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule: { interval: weekly }
+    # Majors (e.g. Tailwind/Vite) need manual migration — handle them by hand.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups: { npm-deps: { patterns: ["*"] } }
 
   # Keeps SHA-pinned actions current (Dependabot updates the pin + comment).
