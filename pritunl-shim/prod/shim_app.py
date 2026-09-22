@@ -32,9 +32,26 @@ setup.setup_settings()
 import pritunl.poolers  # noqa: E402,F401  registers pooler types (avoids KeyError)
 import pritunl.queues  # noqa: E402,F401  registers init_org_pooled / init_user
 from bson import ObjectId  # noqa: E402
-from pritunl import constants, organization, server  # noqa: E402
+from pritunl import constants, host, organization, server  # noqa: E402
+from pritunl import settings as psettings  # noqa: E402
 
 VERSION = getattr(constants, "VERSION", "unknown")
+
+
+def _load_host_context() -> None:
+    """Attach the node's existing Pritunl host to settings.local so host-derived
+    properties (e.g. Server.network6) resolve. The sidecar reuses the running
+    node's host record rather than registering itself as a new host."""
+    try:
+        hosts = list(host.iter_hosts())
+        if hosts:
+            psettings.local.host_id = hosts[0].id
+            psettings.local.host = hosts[0]
+    except Exception:  # noqa: BLE001 — best effort; org/user ops don't need it
+        pass
+
+
+_load_host_context()
 
 
 # --- Auth --------------------------------------------------------------------
@@ -64,6 +81,17 @@ def body_json() -> dict:
         return json.loads(flask.request.get_data() or b"{}")
     except ValueError:
         return {}
+
+
+def _host_coupled(exc) -> tuple:
+    """Honest 409 for server/network ops that need Pritunl's running-host runner
+    (network locks, CA regen). Fleet routes the operator to the node's native
+    admin via SSO for these."""
+    return flask.jsonify({
+        "code": "host_coupled",
+        "error": f"server/network config is host-coupled and not applied via the "
+                 f"shim ({exc}); use the node's native admin (SSO) for this change",
+    }), 409
 
 
 # --- Object -> JSON views (shape matches the mock contract) ------------------
@@ -291,8 +319,11 @@ def create_server():
     if not data.get("name"):
         return flask.jsonify({"error": "name required"}), 400
     kwargs = {k: data[k] for k in _SERVER_FIELDS if k in data}
-    s = server.new_server(**kwargs)
-    s.commit()
+    try:
+        s = server.new_server(**kwargs)
+        s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s)), 201
 
 
@@ -306,8 +337,11 @@ def patch_server(server_id):
     changed = [k for k in _SERVER_FIELDS if k in data]
     for k in changed:
         setattr(s, k, data[k])
-    if changed:
-        s.commit(changed)
+    try:
+        if changed:
+            s.commit(changed)
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s))
 
 
@@ -342,9 +376,9 @@ def add_route(server_id):
             data.get("advertise", False), None, None, False,
             data.get("comment"), None,
         )
-    except Exception as exc:  # noqa: BLE001 — surface pritunl route validation
-        return flask.jsonify({"error": f"add route failed: {exc}"}), 400
-    s.commit()
+        s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s))
 
 
@@ -354,8 +388,11 @@ def remove_route(server_id):
     s = _find_server(server_id)
     if not s:
         return flask.jsonify({"error": "server not found"}), 404
-    s.remove_route(body_json().get("network"))
-    s.commit()
+    try:
+        s.remove_route(body_json().get("network"))
+        s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s))
 
 
@@ -365,8 +402,11 @@ def attach_org(server_id, org_id):
     s = _find_server(server_id)
     if not s:
         return flask.jsonify({"error": "server not found"}), 404
-    s.add_org(org_id)  # pritunl stores org ids as strings
-    s.commit()
+    try:
+        s.add_org(org_id)  # pritunl stores org ids as strings
+        s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s))
 
 
@@ -376,8 +416,11 @@ def detach_org(server_id, org_id):
     s = _find_server(server_id)
     if not s:
         return flask.jsonify({"error": "server not found"}), 404
-    s.remove_org(org_id)
-    s.commit()
+    try:
+        s.remove_org(org_id)
+        s.commit()
+    except Exception as exc:  # noqa: BLE001
+        return _host_coupled(exc)
     return flask.jsonify(_server_view(s))
 
 

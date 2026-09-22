@@ -95,7 +95,17 @@ pritunl.poolers` (registers queue + pooler types; `block=True` then generates
 certs synchronously). Shim is a Flask app on the image's bundled Flask (no extra
 deps), run threaded on :9800.
 
-**E3 remaining — precise fixes for next pass:**
+**E3 — mostly DONE, verified.** With host context loaded into `settings.local`
+(reuse the node's existing host record), server **create / delete / routes /
+config** all work against real Pritunl. The one host-coupled op is `add_org`
+(triggers `generate_ca_cert` + a distributed `ServerNetworkLocked`), which now
+degrades cleanly to **HTTP 409 `host_coupled`** rather than a 500 — Fleet routes
+that change to the node's native admin (SSO). This is the deliberate boundary:
+**shim = cross-site orchestration; native admin (via SSO) = host-coupled network
+config.** Reimplementing Pritunl's host/runner/lock subsystem in a sidecar would
+be fragile and version-brittle, so we don't.
+
+**Historical E3 notes (resolved above):**
 - `server.add_org(org_id)` takes a **string** id (done), but then calls
   `generate_ca_cert()`; a create-via-API server is under-populated and this can
   hit `NoneType.id`. Fix: mirror `handlers/server.py` `new_server(...)` — pass
