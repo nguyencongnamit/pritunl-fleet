@@ -7,10 +7,22 @@ export function Users() {
   const [applied, setApplied] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = React.useState(false);
   const { data, error, loading, refetch } = useAsync<ScopedUser[]>(
     () => api.get(`/users${applied ? `?q=${encodeURIComponent(applied)}` : ""}`),
     [applied],
   );
+
+  const keyOf = (u: ScopedUser) => `${u.node_id}:${u.id}`;
+
+  function toggle(k: string) {
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  }
 
   async function run(key: string, fn: () => Promise<unknown>, quiet = false) {
     setBusy(key);
@@ -22,6 +34,35 @@ export function Users() {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function bulkAction(action: "disable" | "enable" | "revoke" | "delete") {
+    const rows = (data ?? []).filter((u) => selected.has(keyOf(u)));
+    if (!rows.length) return;
+    if (!confirm(`${action} ${rows.length} selected user(s) across their sites?`)) return;
+    setBulkBusy(true);
+    setErr(null);
+    // Group by node; the per-node bulk-action API takes an org_id (any org on that
+    // node is fine — the node resolves users by id) + the user ids.
+    const byNode = new Map<string, { org_id: string; ids: string[] }>();
+    for (const u of rows) {
+      const g = byNode.get(u.node_id) ?? { org_id: u.org_id, ids: [] };
+      g.ids.push(u.id);
+      byNode.set(u.node_id, g);
+    }
+    try {
+      for (const [node_id, g] of byNode) {
+        await api.post(`/nodes/${node_id}/users/bulk-action`, {
+          org_id: g.org_id, action, user_ids: g.ids,
+        });
+      }
+      setSelected(new Set());
+      refetch();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : String(e));
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -38,18 +79,34 @@ export function Users() {
 
       {err && <ErrorBox message={err} />}
 
+      {selected.size > 0 && (
+        <Card className="flex flex-wrap items-center gap-2 p-3">
+          <span className="text-sm text-slate-300">{selected.size} selected</span>
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => bulkAction("disable")}>Disable</Button>
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => bulkAction("enable")}>Enable</Button>
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => bulkAction("revoke")}>Revoke</Button>
+            <Button size="sm" variant="danger" disabled={bulkBusy} onClick={() => bulkAction("delete")}>Delete</Button>
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelected(new Set())}>Clear</Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4">
         {loading && !data ? (
           <Spinner />
         ) : error ? (
           <ErrorBox message={error} />
         ) : (
-          <Table head={["User", "Email", "Org", "Site", "State", "Actions"]}>
+          <Table head={["", "User", "Email", "Org", "Site", "State", "Actions"]}>
             {(data ?? []).map((u) => {
-              const key = `${u.node_id}:${u.id}`;
+              const key = keyOf(u);
               const b = busy === key;
               return (
                 <tr key={key} className="text-slate-300">
+                  <Td>
+                    <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(key)} />
+                  </Td>
                   <Td className="font-medium text-slate-100">{u.name}</Td>
                   <Td className="text-slate-400">{u.email ?? "—"}</Td>
                   <Td>{u.org_name ?? u.org_id}</Td>

@@ -4,16 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-09-22
 
 ### Added
 - **Orgs management UI** — pick a node, create/delete orgs, and bulk-add users.
+- **Bulk user actions** — multi-select users on the Users page and disable /
+  enable / revoke / delete across their sites in one action.
 - **Alembic migrations** with safe auto-adopt (replaces `create_all`): fresh DBs
   upgrade to head; existing DBs are stamped without recreating.
 
 ### Fixed
 - "Open admin" now appears only for nodes that have an `admin_url` set (surfaced
   on the node list), removing the error on mock/plain nodes.
+
+[1.2.0]: https://github.com/nguyencongnamit/pritunl-fleet/releases/tag/v1.2.0
 
 ## [1.1.0] - 2026-09-22
 

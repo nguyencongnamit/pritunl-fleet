@@ -16,11 +16,12 @@ Pritunl's HMAC token/secret REST API is an **Enterprise** feature, so this
 control plane reaches each OSS node through a pluggable **`NodeAdapter`** and
 ships an OSS-viable default that does not require a license.
 
-> **🚀 v1.1.0 — now manages real Pritunl OSS nodes.** A production **shim**
+> **🚀 v1.2.0 — manages real Pritunl OSS nodes.** A production **shim**
 > (sidecar built from the node's Pritunl image) drives an actual node end-to-end:
-> orgs, users, **real client-certificate generation**, server lifecycle, per-user
-> PIN/OTP, bulk ops, email profile delivery, and one-click "Open admin" — all
-> behind MFA + RBAC + a tamper-evident audit log. Verified against Pritunl 1.32.
+> orgs (with a management UI), users, **real client-certificate generation**,
+> server lifecycle, per-user PIN/OTP, bulk create + bulk actions, email profile
+> delivery, and one-click "Open admin" — all behind MFA + RBAC + a tamper-evident
+> audit log, with Alembic-managed schema. Verified against Pritunl 1.32.
 > See [`pritunl-shim/SHIM_DESIGN.md`](./pritunl-shim/SHIM_DESIGN.md).
 >
 > v1.0.0 delivered the full control plane (registry, dashboard, mutations, audit,
