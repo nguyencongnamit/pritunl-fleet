@@ -83,4 +83,34 @@ All under the shared HMAC scheme (`shim/hmac_auth.py`); nonce + skew enforced.
 
 E2 core parity → E3 server settings/routes → E4 user depth/orgs/OTP →
 E5 profile delivery + failover → E6 SSO. Each verified against a real Pritunl +
-Mongo brought up in the compose lab (`profile: real`).
+Mongo in `docker-compose.real.yml`.
+
+## Build status (verified against Pritunl 1.32)
+
+**E2 core — DONE, verified end-to-end** via the shim against real Pritunl:
+`/v1/ping`, `/v1/state`, org create/delete, user create, **real cert profile
+generation (`build_key_tar_archive` → 10 KB `.tar`)**, disable, delete. Runtime
+init = `setup.setup_db()` + `setup.setup_settings()` + `import pritunl.queues,
+pritunl.poolers` (registers queue + pooler types; `block=True` then generates
+certs synchronously). Shim is a Flask app on the image's bundled Flask (no extra
+deps), run threaded on :9800.
+
+**E3 remaining — precise fixes for next pass:**
+- `server.add_org(org_id)` takes a **string** id (done), but then calls
+  `generate_ca_cert()`; a create-via-API server is under-populated and this can
+  hit `NoneType.id`. Fix: mirror `handlers/server.py` `new_server(...)` — pass
+  the FULL default field set (`network_wg`, `wg=False`, `ipv6=False`,
+  `ipv6_firewall`, `bind_address`, `dh_param_bits`, `groups`, …) so servers are
+  fully-formed like web-created ones.
+- Routes use `upsert_route(network, nat_route, nat_interface, nat_netmap,
+  advertise, vpc_region, vpc_id, net_gateway, comment, metric)` — positional.
+  It reads `self.network6`, which is absent on under-populated servers; the same
+  full-defaults fix resolves it.
+- Net: **make `create_server` faithfully mirror Pritunl's own server-create
+  handler**; attach/route then work.
+
+**Not yet built:** E4 user policy/OTP/bulk, E5 profile delivery + failover, E6
+SSO (Flask-signed `session` cookie: `{'session_id','admin_id'}` signed with
+`settings.app.cookie_secret`; requires the shim to be reachable on the node's
+web origin for the cookie to apply cross-request — a deployment/reverse-proxy
+detail).

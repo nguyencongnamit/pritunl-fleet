@@ -1,0 +1,51 @@
+# Real-Pritunl lab — for building/verifying the production shim against an actual
+# Pritunl OSS node (not the mock). Brings up MongoDB + Pritunl + the shim sidecar.
+#
+#   docker compose -f docker-compose.real.yml up -d --build
+#
+# The tun device / NET_ADMIN are intentionally omitted so this runs on any Docker
+# host; the VPN data-plane won't tunnel, but every control path the shim uses
+# (org/user/server CRUD, cert/profile generation, admin SSO session) works.
+
+services:
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - realmongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pritunl:
+    image: goofball222/pritunl:latest
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/pritunl
+      REVERSE_PROXY: "true"    # serve plain HTTP on :9700 (no self-signed TLS)
+      WIREGUARD: "false"
+    ports:
+      - "9700:9700"            # Pritunl native admin UI (SSO target)
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  shim:
+    build:
+      context: ./pritunl-shim
+      dockerfile: prod/Dockerfile
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/pritunl
+      SHIM_TOKEN: ${REAL_SHIM_TOKEN:-real-shim-token}
+      SHIM_SECRET: ${REAL_SHIM_SECRET:-real-shim-secret}
+      SHIM_ADMIN_USER: pritunl        # admin username for SSO session mint
+      PRITUNL_WEB_ORIGIN: http://localhost:9700
+    ports:
+      - "9800:9800"            # shim HMAC REST (what Fleet's shim adapter targets)
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  realmongo:
