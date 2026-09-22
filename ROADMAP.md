@@ -12,17 +12,22 @@ what comes next, ordered by leverage. Checkboxes track intent, not commitment.
       delivery** (Resend), **one-click "Open admin"** deep-link.
 - [x] **Login + MFA rate-limiting** (per username+IP lockout).
 
+## Done in v1.2.0
+
+- [x] **Alembic migrations** with safe auto-adopt (replaces `create_all`).
+- [x] **Orgs UI** (create/delete + bulk-add users) and **bulk user actions**
+      (multi-select disable/enable/revoke/delete across sites).
+- [x] **Cross-site profile bundle** — health-ordered ZIP of a logical user's
+      per-site profiles (a bundle, not a merged .ovpn: each site has its own PKI).
+
 ## Next up (highest leverage)
 
-- [ ] **Alembic migrations** — replace `create_all()`; versioned schema for real
-      deployments and upgrades. (Currently blocks adding DB columns.)
-- [ ] **Bulk UI + Orgs UI** — the bulk + orgs APIs exist; add the console screens.
-- [ ] **Failover profiles** — multi-`remote` merge across sites (needs 2+ nodes).
 - [ ] **Mongo read adapter** — read-only fast path (motor, TLS) for large fleets.
 - [ ] **SSH break-glass adapter** — asyncssh, strict host-key, forced-command;
       installs/upgrades the shim and restarts services.
 - [ ] **SSO auto-login** (vs the shipped deep-link) — mint Pritunl's custom-signed
       session cookie; requires same-origin HTTPS co-location (documented).
+- [ ] **Tag the cross-site bundle** as the next release (v1.2.1 / v1.3.0).
 
 ## Reliability & scale
 
