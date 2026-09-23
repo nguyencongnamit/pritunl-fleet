@@ -7,6 +7,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Admin MFA reset** — `PATCH /principals/{id}` accepts `reset_mfa: true` to
+  clear a principal's TOTP secret and force re-enrolment on next login (rotate a
+  compromised MFA secret without a full wipe).
 - **Cross-site profile bundle** — `GET /identities/{id}/profiles` returns a
   health-ordered ZIP of a logical user's per-site client profiles (each site has
   its own PKI, so a bundle the client fails over across, not a merged .ovpn).

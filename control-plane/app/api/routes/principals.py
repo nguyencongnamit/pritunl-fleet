@@ -67,6 +67,9 @@ def update_principal(
         p.password_hash = hash_password(data.pop("password"))
     else:
         data.pop("password", None)
+    if data.pop("reset_mfa", False):
+        p.totp_secret_enc = None
+        p.mfa_enabled = False
     for k, v in data.items():
         setattr(p, k, v)
     db.flush()

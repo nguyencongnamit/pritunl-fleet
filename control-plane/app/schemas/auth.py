@@ -63,6 +63,9 @@ class PrincipalUpdateIn(BaseModel):
     global_role: Role | None = None
     disabled: bool | None = None
     password: str | None = Field(default=None, min_length=8)
+    # When true, clears the TOTP secret + disables MFA so the principal must
+    # re-enrol on next login (used to rotate a compromised MFA secret).
+    reset_mfa: bool | None = None
 
 
 class RoleBindingIn(BaseModel):
